@@ -8,6 +8,7 @@ import game.obj.Rocket;
 import game.obj.sound.Sound;
 import game.util.GameSettings;
 import game.util.HighscoreManager;
+import game.util.DifficultySettings;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -41,7 +42,8 @@ public class PanelGame extends JComponent {
     private int shotTime;
     private GameSettings gameSettings;
     private HighscoreManager highscoreManager;
-    private boolean scoreSubmitted = false; // Flag to prevent multiple submissions
+    private boolean scoreSubmitted = false;
+    private DifficultySettings.DifficultyConfig currentDifficulty;
 
     //  Game FPS
     private final int FPS = 60;
@@ -57,6 +59,7 @@ public class PanelGame extends JComponent {
     public PanelGame() {
         gameSettings = GameSettings.getInstance();
         highscoreManager = HighscoreManager.getInstance();
+        currentDifficulty = DifficultySettings.getDifficultyConfig(gameSettings.getDifficulty());
         
         // Add mouse listener for button clicks
         addMouseListener(new MouseAdapter() {
@@ -67,24 +70,21 @@ public class PanelGame extends JComponent {
                     int y = e.getY();
                     
                     // Check if resume button is clicked
-                    if (isButtonClicked(x, y, width / 2, 380)) {
+                    if (isButtonClicked(x, y, width / 2, 420)) {
                         togglePause();
                     }
                     // Check if restart button is clicked
-                    else if (isButtonClicked(x, y, width / 2, 430)) {
+                    else if (isButtonClicked(x, y, width / 2, 470)) {
                         resetGame();
                         togglePause();
                     }
                     // Check if main menu button is clicked
-                    else if (isButtonClicked(x, y, width / 2, 480)) {
-                        // Submit score before going to main menu
+                    else if (isButtonClicked(x, y, width / 2, 520)) {
                         submitScore();
-                        
                         start = false;
                         paused = true;
                         
                         Main mainFrame = (Main)SwingUtilities.getWindowAncestor(PanelGame.this);
-                        
                         SwingUtilities.invokeLater(new Runnable() {
                             @Override
                             public void run() {
@@ -94,7 +94,7 @@ public class PanelGame extends JComponent {
                     }
                   
                     // Check if volume slider is clicked
-                    if (y >= 240 && y <= 260) {
+                    if (y >= 260 && y <= 280) {
                         int sliderX = (width - 300) / 2;
                         if (x >= sliderX && x <= sliderX + 300) {
                             int newVolume = (int)(((x - sliderX) / 300.0) * 100);
@@ -105,7 +105,7 @@ public class PanelGame extends JComponent {
                     }
                     
                     // Check if brightness slider is clicked
-                    if (y >= 310 && y <= 330) {
+                    if (y >= 350 && y <= 370) {
                         int sliderX = (width - 300) / 2;
                         if (x >= sliderX && x <= sliderX + 300) {
                             int newBrightness = (int)(((x - sliderX) / 300.0) * 100);
@@ -123,6 +123,9 @@ public class PanelGame extends JComponent {
         if (sound != null) {
             sound.setVolume(gameSettings.getVolume());
         }
+        
+        // Update difficulty settings
+        currentDifficulty = DifficultySettings.getDifficultyConfig(gameSettings.getDifficulty());
         
         repaint();
     }
@@ -165,11 +168,16 @@ public class PanelGame extends JComponent {
         Rocket rocket = new Rocket();
         rocket.changeLocation(0, locationY);
         rocket.changeAngle(0);
+        rocket.setSpeedMultiplier(currentDifficulty.getRocketSpeedMultiplier());
+        rocket.setMaxHP(currentDifficulty.getRocketMaxHP());
         rockets.add(rocket);
+        
         int locationY2 = ran.nextInt(height - 50) + 25;
         Rocket rocket2 = new Rocket();
         rocket2.changeLocation(width, locationY2);
         rocket2.changeAngle(180);
+        rocket2.setSpeedMultiplier(currentDifficulty.getRocketSpeedMultiplier());
+        rocket2.setMaxHP(currentDifficulty.getRocketMaxHP());
         rockets.add(rocket2);
     }
 
@@ -177,8 +185,10 @@ public class PanelGame extends JComponent {
         sound = new Sound();
         player = new Player();
         player.changeLocation(150, 150);
+        player.setMaxHP(currentDifficulty.getPlayerMaxHP());
         rockets = new ArrayList<>();
         boomEffects = new ArrayList<>();
+        
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -186,14 +196,13 @@ public class PanelGame extends JComponent {
                     if (!paused) {
                         addRocket();
                     }
-                    sleep(3000);
+                    sleep(currentDifficulty.getRocketSpawnInterval());
                 }
             }
         }).start();
     }
 
     private void resetGame() {
-        // Submit current score before resetting
         submitScore();
         
         score = 0;
@@ -201,13 +210,15 @@ public class PanelGame extends JComponent {
         bullets.clear();
         player.changeLocation(150, 150);
         player.reset();
-        scoreSubmitted = false; // Reset flag for new game
+        player.setMaxHP(currentDifficulty.getPlayerMaxHP());
+        scoreSubmitted = false;
+        
+        // Update difficulty settings in case they changed
+        currentDifficulty = DifficultySettings.getDifficultyConfig(gameSettings.getDifficulty());
     }
 
     public void stopGame() {
-        // Submit score when stopping game
         submitScore();
-        
         paused = true;
         repaint();
     }
@@ -226,12 +237,10 @@ public class PanelGame extends JComponent {
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                // If player is dead (game over), only allow ENTER and ESC
                 if (!player.isAlive()) {
                     if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                         key.setKey_enter(true);
                     } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                        // Go to main menu when ESC is pressed during game over
                         submitScore();
                         start = false;
                         
@@ -243,10 +252,9 @@ public class PanelGame extends JComponent {
                             }
                         });
                     }
-                    return; // Don't process other keys when game over
+                    return;
                 }
                 
-                // Normal game controls (only when player is alive)
                 if (e.getKeyCode() == KeyEvent.VK_A) {
                     key.setKey_left(true);
                 } else if (e.getKeyCode() == KeyEvent.VK_D) {
@@ -262,7 +270,6 @@ public class PanelGame extends JComponent {
                 } else if (e.getKeyCode() == KeyEvent.VK_P) {
                     togglePause();
                 } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE && paused) {
-                    // Return to main menu when ESC is pressed during pause
                     submitScore();
                     start = false;
                     
@@ -278,7 +285,6 @@ public class PanelGame extends JComponent {
 
             @Override
             public void keyReleased(KeyEvent e) {
-                // Only process key releases when player is alive
                 if (!player.isAlive()) {
                     if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                         key.setKey_enter(false);
@@ -301,6 +307,7 @@ public class PanelGame extends JComponent {
                 }
             }
         });
+        
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -330,7 +337,7 @@ public class PanelGame extends JComponent {
                         } else {
                             shotTime = 0;
                         }
-                        if (key.isKey_space()) {
+                                                if (key.isKey_space()) {
                             player.speedUp();
                         } else {
                             player.speedDown();
@@ -338,7 +345,6 @@ public class PanelGame extends JComponent {
                         player.update();
                         player.changeAngle(angle);
                     } else if (!paused && !player.isAlive()) {
-                        // Only allow ENTER to restart when game over
                         if (key.isKey_enter()) {
                             resetGame();
                         }
@@ -399,7 +405,7 @@ public class PanelGame extends JComponent {
         }).start();
     }
 
-        private void checkBullets(Bullet bullet) {
+    private void checkBullets(Bullet bullet) {
         for (int i = 0; i < rockets.size(); i++) {
             Rocket rocket = rockets.get(i);
             if (rocket != null) {
@@ -426,7 +432,6 @@ public class PanelGame extends JComponent {
             }
         }
     }
-
 
     private void checkPlayer(Rocket rocket) {
         if (rocket != null) {
@@ -456,7 +461,6 @@ public class PanelGame extends JComponent {
                     boomEffects.add(new Effect(x, y, 10, 5, 100, 0.5f, new Color(255, 70, 70)));
                     boomEffects.add(new Effect(x, y, 10, 5, 150, 0.2f, new Color(255, 255, 255)));
                     
-                    // Submit score when player dies
                     submitScore();
                 }
             }
@@ -473,7 +477,6 @@ public class PanelGame extends JComponent {
     }
 
     private void drawGame() {
-        // Declare variables at the beginning to avoid duplication
         String currentUser = gameSettings.getCurrentUser();
         int bestScore = highscoreManager.getPlayerBestScore(currentUser);
         
@@ -514,16 +517,21 @@ public class PanelGame extends JComponent {
         g2.setFont(getFont().deriveFont(Font.BOLD, 15f));
         g2.drawString("Score : " + score, 10, 20);
         
-        // Display current user and their best score
+        // Display current difficulty and user info
         g2.setFont(getFont().deriveFont(Font.PLAIN, 12f));
         g2.drawString("Player: " + currentUser, 10, 40);
         g2.drawString("Best: " + bestScore, 10, 55);
+        g2.drawString("Difficulty: " + gameSettings.getDifficulty(), 10, 70);
         
-        // Show if current score is a new personal best
+        // Display player HP
+        g2.setColor(Color.RED);
+        g2.drawString("HP: " + (int)player.getHP() + "/" + currentDifficulty.getPlayerMaxHP(), 10, 85);
+        g2.setColor(Color.WHITE);
+        
         if (score > bestScore && score > 0) {
             g2.setColor(Color.YELLOW);
             g2.setFont(getFont().deriveFont(Font.BOLD, 14f));
-            g2.drawString("NEW PERSONAL BEST!", 10, 75);
+            g2.drawString("NEW PERSONAL BEST!", 10, 105);
             g2.setColor(Color.WHITE);
         }
         
@@ -543,18 +551,27 @@ public class PanelGame extends JComponent {
             double x = (width - textWidth) / 2;
             g2.drawString(pauseText, (int) x, 150);
             
+            // Show current difficulty info
+            g2.setFont(getFont().deriveFont(Font.BOLD, 16f));
+            String difficultyText = "Current Difficulty: " + gameSettings.getDifficulty();
+            fm = g2.getFontMetrics();
+            r2 = fm.getStringBounds(difficultyText, g2);
+            textWidth = r2.getWidth();
+            x = (width - textWidth) / 2;
+            g2.drawString(difficultyText, (int) x, 190);
+            
             g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
             String volumeLabel = "Volume: " + gameSettings.getVolume() + "%";
             fm = g2.getFontMetrics();
             r2 = fm.getStringBounds(volumeLabel, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(volumeLabel, (int) x, 220);
+            g2.drawString(volumeLabel, (int) x, 260);
             
             int sliderWidth = 300;
             int sliderHeight = 20;
             int sliderX = (width - sliderWidth) / 2;
-            int sliderY = 240;
+            int sliderY = 280;
             g2.setColor(Color.DARK_GRAY);
             g2.fillRect(sliderX, sliderY, sliderWidth, sliderHeight);
             g2.setColor(Color.GREEN);
@@ -569,9 +586,9 @@ public class PanelGame extends JComponent {
             r2 = fm.getStringBounds(brightnessLabel, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(brightnessLabel, (int) x, 290);
+            g2.drawString(brightnessLabel, (int) x, 330);
             
-            sliderY = 310;
+            sliderY = 350;
             g2.setColor(Color.DARK_GRAY);
             g2.fillRect(sliderX, sliderY, sliderWidth, sliderHeight);
             g2.setColor(Color.YELLOW);
@@ -580,9 +597,9 @@ public class PanelGame extends JComponent {
             g2.setColor(Color.WHITE);
             g2.drawRect(sliderX, sliderY, sliderWidth, sliderHeight);
             
-            drawButton(g2, "Resume Game", width / 2, 380);
-            drawButton(g2, "Restart Game", width / 2, 430);
-            drawButton(g2, "Main Menu", width / 2, 480);
+            drawButton(g2, "Resume Game", width / 2, 420);
+            drawButton(g2, "Restart Game", width / 2, 470);
+            drawButton(g2, "Main Menu", width / 2, 520);
             
             g2.setFont(getFont().deriveFont(Font.PLAIN, 14f));
             String instructions = "Click on buttons or sliders to interact";
@@ -590,32 +607,29 @@ public class PanelGame extends JComponent {
             r2 = fm.getStringBounds(instructions, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(instructions, (int) x, 540);
+            g2.drawString(instructions, (int) x, 580);
             
             String instructions2 = "Press ESC to return to main menu";
             fm = g2.getFontMetrics();
             r2 = fm.getStringBounds(instructions2, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(instructions2, (int) x, 560);
+            g2.drawString(instructions2, (int) x, 600);
         }
         
         if (!player.isAlive()) {
-            // Semi-transparent overlay for better text visibility
             g2.setColor(new Color(0, 0, 0, 200));
             g2.fillRect(0, 0, width, height);
             
-            // Calculate center position
             int centerY = height / 2;
             
-            // Draw "GAME OVER" text
             g2.setColor(Color.RED);
             g2.setFont(getFont().deriveFont(Font.BOLD, 50f));
             String gameOverText = "GAME OVER";
             FontMetrics fm = g2.getFontMetrics();
             Rectangle2D r2 = fm.getStringBounds(gameOverText, g2);
             double textWidth = r2.getWidth();
-            double x = (width - textWidth) / 2;
+                        double x = (width - textWidth) / 2;
             g2.drawString(gameOverText, (int) x, centerY - 80);
             
             // Draw final score
@@ -628,6 +642,16 @@ public class PanelGame extends JComponent {
             x = (width - textWidth) / 2;
             g2.drawString(scoreText, (int) x, centerY - 20);
             
+            // Show difficulty completed
+            g2.setColor(Color.CYAN);
+            g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
+            String difficultyText = "Difficulty: " + gameSettings.getDifficulty();
+            fm = g2.getFontMetrics();
+            r2 = fm.getStringBounds(difficultyText, g2);
+            textWidth = r2.getWidth();
+            x = (width - textWidth) / 2;
+            g2.drawString(difficultyText, (int) x, centerY + 5);
+            
             // Show if it's a new best score
             if (score > bestScore && score > 0) {
                 g2.setColor(Color.YELLOW);
@@ -637,7 +661,7 @@ public class PanelGame extends JComponent {
                 r2 = fm.getStringBounds(newBestText, g2);
                 textWidth = r2.getWidth();
                 x = (width - textWidth) / 2;
-                g2.drawString(newBestText, (int) x, centerY + 15);
+                g2.drawString(newBestText, (int) x, centerY + 35);
             }
             
             // Draw continue instruction with emphasis on available keys
@@ -648,7 +672,7 @@ public class PanelGame extends JComponent {
             r2 = fm.getStringBounds(continueText, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(continueText, (int) x, centerY + 60);
+            g2.drawString(continueText, (int) x, centerY + 70);
             
             // Highlight the available keys
             g2.setColor(Color.YELLOW);
@@ -658,7 +682,7 @@ public class PanelGame extends JComponent {
             r2 = fm.getStringBounds(keyHint, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(keyHint, (int) x, centerY + 80);
+            g2.drawString(keyHint, (int) x, centerY + 90);
             
             // Show player stats
             g2.setColor(Color.CYAN);
@@ -668,7 +692,7 @@ public class PanelGame extends JComponent {
             r2 = fm.getStringBounds(playerText, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(playerText, (int) x, centerY + 110);
+            g2.drawString(playerText, (int) x, centerY + 120);
         }
     }
     
@@ -683,7 +707,7 @@ public class PanelGame extends JComponent {
         g2.setColor(new Color(120, 120, 120));
         g2.drawRect(x, y, buttonWidth, buttonHeight);
         
-                g2.setColor(Color.WHITE);
+        g2.setColor(Color.WHITE);
         g2.setFont(getFont().deriveFont(Font.BOLD, 16f));
         FontMetrics fm = g2.getFontMetrics();
         Rectangle2D r2 = fm.getStringBounds(text, g2);

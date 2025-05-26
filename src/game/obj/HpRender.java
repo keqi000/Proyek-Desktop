@@ -7,7 +7,7 @@ import java.awt.geom.Rectangle2D;
 
 public class HpRender {
 
-    private final HP hp;
+    protected HP hp; // Changed from private to protected
 
     public HpRender(HP hp) {
         this.hp = hp;
@@ -35,5 +35,15 @@ public class HpRender {
 
     public void resetHP() {
         hp.setCurrentHp(hp.getMAX_HP());
+    }
+    
+    // Add getter for HP object
+    public HP getHPObject() {
+        return hp;
+    }
+    
+    // Add setter for HP object
+    public void setHPObject(HP hp) {
+        this.hp = hp;
     }
 }
