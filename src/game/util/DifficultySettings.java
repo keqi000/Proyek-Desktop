@@ -1,38 +1,47 @@
 package game.util;
 
 public class DifficultySettings {
+    
     public static class DifficultyConfig {
-        private int rocketSpawnInterval; // in milliseconds
-        private float rocketSpeedMultiplier;
         private int playerMaxHP;
         private int rocketMaxHP;
-        private String description;
+        private float rocketSpeedMultiplier;
+        private int rocketSpawnInterval;
         
-        public DifficultyConfig(int spawnInterval, float speedMultiplier, int playerHP, int rocketHP, String desc) {
-            this.rocketSpawnInterval = spawnInterval;
-            this.rocketSpeedMultiplier = speedMultiplier;
-            this.playerMaxHP = playerHP;
-            this.rocketMaxHP = rocketHP;
-            this.description = desc;
+        public DifficultyConfig(int playerMaxHP, int rocketMaxHP, float rocketSpeedMultiplier, int rocketSpawnInterval) {
+            this.playerMaxHP = playerMaxHP;
+            this.rocketMaxHP = rocketMaxHP;
+            this.rocketSpeedMultiplier = rocketSpeedMultiplier;
+            this.rocketSpawnInterval = rocketSpawnInterval;
         }
         
-        public int getRocketSpawnInterval() { return rocketSpawnInterval; }
-        public float getRocketSpeedMultiplier() { return rocketSpeedMultiplier; }
-        public int getPlayerMaxHP() { return playerMaxHP; }
-        public int getRocketMaxHP() { return rocketMaxHP; }
-        public String getDescription() { return description; }
+        public int getPlayerMaxHP() {
+            return playerMaxHP;
+        }
+        
+        public int getRocketMaxHP() {
+            return rocketMaxHP;
+        }
+        
+        public float getRocketSpeedMultiplier() {
+            return rocketSpeedMultiplier;
+        }
+        
+        public int getRocketSpawnInterval() {
+            return rocketSpawnInterval;
+        }
     }
     
     public static DifficultyConfig getDifficultyConfig(String difficulty) {
         switch (difficulty.toLowerCase()) {
             case "easy":
-                return new DifficultyConfig(4000, 1.0f, 100, 20, "Easy Mode");
+                return new DifficultyConfig(75, 15, 0.8f, 4000); // More HP, weaker enemies, slower spawn
             case "medium":
-                return new DifficultyConfig(3000, 1.25f, 75, 30, "Medium Mode");
+                return new DifficultyConfig(50, 20, 1.0f, 3000); // Default values
             case "hard":
-                return new DifficultyConfig(2000, 1.5f, 50, 40, "Hard Mode");
+                return new DifficultyConfig(30, 30, 1.5f, 2000); // Less HP, stronger enemies, faster spawn
             default:
-                return new DifficultyConfig(3000, 1.0f, 75, 30, "Medium Mode");
+                return new DifficultyConfig(50, 20, 1.0f, 3000); // Default to medium
         }
     }
 }
