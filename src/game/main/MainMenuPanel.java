@@ -8,6 +8,7 @@ public class MainMenuPanel extends JPanel {
     private Image backgroundImage;
     private JButton startButton;
     private JButton settingsButton;
+    private JButton highscoreButton;
     private JButton exitButton;
     private Main mainFrame;
     
@@ -22,11 +23,14 @@ public class MainMenuPanel extends JPanel {
             e.printStackTrace();
         }
         
-        // Create settings button separately for top-right corner
+        // Create top panel for settings and highscore buttons
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setOpaque(false);
+        
+        // Create settings button for top-right corner
         settingsButton = new JButton();
         try {
-            // Load the image and scale it to 90x90
-                        ImageIcon originalIcon = new ImageIcon(getClass().getResource("/game/image/Settings_BTN.png"));
+            ImageIcon originalIcon = new ImageIcon(getClass().getResource("/game/image/Settings_BTN.png"));
             Image img = originalIcon.getImage();
             Image scaledImg = img.getScaledInstance(60, 60, Image.SCALE_SMOOTH);
             settingsButton.setIcon(new ImageIcon(scaledImg));
@@ -34,14 +38,26 @@ public class MainMenuPanel extends JPanel {
             System.err.println("Error loading settings button image: " + e.getMessage());
         }
         
-        // Style settings button
-        settingsButton.setContentAreaFilled(false);
-        settingsButton.setFocusPainted(false);
-        settingsButton.setBorderPainted(false);
-        settingsButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        settingsButton.setPreferredSize(new Dimension(90, 90));
+        // Create highscore button for top-left corner
+        highscoreButton = new JButton();
+        try {
+            ImageIcon originalIcon = new ImageIcon(getClass().getResource("/game/image/Rating_BTN.png"));
+            Image img = originalIcon.getImage();
+            Image scaledImg = img.getScaledInstance(60, 60, Image.SCALE_SMOOTH);
+            highscoreButton.setIcon(new ImageIcon(scaledImg));
+        } catch (Exception e) {
+            System.err.println("Error loading highscore button image: " + e.getMessage());
+            // Fallback text if image not found
+            highscoreButton.setText("HIGH");
+            highscoreButton.setFont(new Font("Arial", Font.BOLD, 10));
+            highscoreButton.setForeground(Color.WHITE);
+        }
         
-        // Add action listener to settings button
+        // Style both top buttons
+        styleTopButton(settingsButton);
+        styleTopButton(highscoreButton);
+        
+        // Add action listeners
         settingsButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -49,11 +65,25 @@ public class MainMenuPanel extends JPanel {
             }
         });
         
-        // Create a panel for the settings button in the top-right corner
+        highscoreButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainFrame.openHighscore();
+            }
+        });
+        
+        // Create panels for top buttons
+        JPanel topLeftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topLeftPanel.setOpaque(false);
+        topLeftPanel.add(highscoreButton);
+        
         JPanel topRightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         topRightPanel.setOpaque(false);
         topRightPanel.add(settingsButton);
-        add(topRightPanel, BorderLayout.NORTH);
+        
+        topPanel.add(topLeftPanel, BorderLayout.WEST);
+        topPanel.add(topRightPanel, BorderLayout.EAST);
+        add(topPanel, BorderLayout.NORTH);
         
         // Create a panel for main buttons (start and exit)
         JPanel buttonPanel = new JPanel();
@@ -63,7 +93,6 @@ public class MainMenuPanel extends JPanel {
         // Create start button
         startButton = new JButton();
         try {
-            // Load the image and scale it to the desired button size
             ImageIcon originalIcon = new ImageIcon(getClass().getResource("/game/image/Start_BTN.png"));
             Image img = originalIcon.getImage();
             Image scaledImg = img.getScaledInstance(300, 90, Image.SCALE_SMOOTH);
@@ -75,7 +104,6 @@ public class MainMenuPanel extends JPanel {
         // Create exit button
         exitButton = new JButton();
         try {
-            // Load the image and scale it to the desired button size
             ImageIcon originalIcon = new ImageIcon(getClass().getResource("/game/image/Exit_BTN.png"));
             Image img = originalIcon.getImage();
             Image scaledImg = img.getScaledInstance(300, 90, Image.SCALE_SMOOTH);
@@ -105,7 +133,7 @@ public class MainMenuPanel extends JPanel {
         
         // Add buttons to panel with spacing between them
         buttonPanel.add(startButton);
-        buttonPanel.add(Box.createRigidArea(new Dimension(0, 25))); // Spacing between buttons
+        buttonPanel.add(Box.createRigidArea(new Dimension(0, 25)));
         buttonPanel.add(exitButton);
         
         // Center align main buttons
@@ -117,8 +145,15 @@ public class MainMenuPanel extends JPanel {
         wrapperPanel.setOpaque(false);
         wrapperPanel.add(buttonPanel);
         
-        // Add wrapper panel to the center of the main panel
         add(wrapperPanel, BorderLayout.CENTER);
+    }
+    
+    private void styleTopButton(JButton button) {
+        button.setContentAreaFilled(false);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(60, 60));
     }
     
     private void styleButton(JButton button) {
@@ -127,7 +162,6 @@ public class MainMenuPanel extends JPanel {
         button.setBorderPainted(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        // Set preferred size for main buttons
         Dimension buttonSize = new Dimension(300, 90);
         button.setPreferredSize(buttonSize);
         button.setMaximumSize(buttonSize);
@@ -140,7 +174,6 @@ public class MainMenuPanel extends JPanel {
         if (backgroundImage != null) {
             g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
         } else {
-            // Fallback if image fails to load
             g.setColor(Color.BLACK);
             g.fillRect(0, 0, getWidth(), getHeight());
             g.setColor(Color.WHITE);
@@ -149,4 +182,3 @@ public class MainMenuPanel extends JPanel {
         }
     }
 }
-
