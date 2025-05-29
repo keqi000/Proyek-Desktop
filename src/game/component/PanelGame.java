@@ -55,6 +55,15 @@ public class PanelGame extends JComponent {
     private List<Rocket> rockets;
     private List<Effect> boomEffects;
     private int score = 0;
+    
+    // Ultimate system - 5 seconds duration
+    private int ultimateCharges = 0;
+    private boolean ultimateActive = false;
+    private int ultimateTimer = 0;
+    private final int ULTIMATE_DURATION = 300; // 5 seconds at 60 FPS (5 * 60 = 300)
+    
+    // Define gold color
+    private final Color GOLD_COLOR = new Color(255, 215, 0);
 
     public PanelGame() {
         gameSettings = GameSettings.getInstance();
@@ -206,6 +215,9 @@ public class PanelGame extends JComponent {
         submitScore();
         
         score = 0;
+        ultimateCharges = 0; // Reset ultimate charges
+        ultimateActive = false;
+        ultimateTimer = 0;
         rockets.clear();
         bullets.clear();
         player.changeLocation(150, 150);
@@ -321,14 +333,31 @@ public class PanelGame extends JComponent {
                         if (key.isKey_right()) {
                             angle += s;
                         }
-                        if (key.isKey_j() || key.isKey_k()) {
+                                                if (key.isKey_j() || key.isKey_k()) {
                             if (shotTime == 0) {
                                 if (key.isKey_j()) {
-                                    bullets.add(0, new Bullet(player.getX(), player.getY(), player.getAngle(), 5, 3f));
-                                } else {
-                                    bullets.add(0, new Bullet(player.getX(), player.getY(), player.getAngle(), 20, 3f));
+                                    if (ultimateActive) {
+                                        // Ultimate bullet when J is pressed during ultimate mode
+                                        bullets.add(0, new Bullet(player.getX(), player.getY(), player.getAngle(), 20, 5f));
+                                    } else {
+                                        // Normal bullet
+                                        bullets.add(0, new Bullet(player.getX(), player.getY(), player.getAngle(), 5, 3f));
+                                    }
+                                    sound.soundShoot();
+                                } else if (key.isKey_k()) {
+                                    if (ultimateCharges > 0 && !ultimateActive) {
+                                        // Activate ultimate mode and shoot ultimate bullet immediately
+                                        ultimateCharges--;
+                                        ultimateActive = true;
+                                        ultimateTimer = ULTIMATE_DURATION;
+                                        bullets.add(0, new Bullet(player.getX(), player.getY(), player.getAngle(), 20, 5f));
+                                        sound.soundShoot();
+                                    } else if (ultimateActive) {
+                                        // If ultimate is already active, shoot ultimate bullet
+                                        bullets.add(0, new Bullet(player.getX(), player.getY(), player.getAngle(), 20, 5f));
+                                        sound.soundShoot();
+                                    }
                                 }
-                                sound.soundShoot();
                             }
                             shotTime++;
                             if (shotTime == 15) {
@@ -337,14 +366,15 @@ public class PanelGame extends JComponent {
                         } else {
                             shotTime = 0;
                         }
-                                                if (key.isKey_space()) {
+
+                        if (key.isKey_space()) {
                             player.speedUp();
                         } else {
                             player.speedDown();
                         }
                         player.update();
                         player.changeAngle(angle);
-                    } else if (!paused && !player.isAlive()) {
+                    } else if (!paused) {
                         if (key.isKey_enter()) {
                             resetGame();
                         }
@@ -377,7 +407,7 @@ public class PanelGame extends JComponent {
                     if (!paused) {
                         for (int i = 0; i < bullets.size(); i++) {
                             Bullet bullet = bullets.get(i);
-                            if (bullet != null) {
+                                                        if (bullet != null) {
                                 bullet.update();
                                 checkBullets(bullet);
                                 if (!bullet.check(width, height)) {
@@ -398,6 +428,14 @@ public class PanelGame extends JComponent {
                                 boomEffects.remove(boomEffect);
                             }
                         }
+                        
+                        // Update ultimate timer
+                        if (ultimateActive && ultimateTimer > 0) {
+                            ultimateTimer--;
+                            if (ultimateTimer == 0) {
+                                ultimateActive = false;
+                            }
+                        }
                     }
                     sleep(1);
                 }
@@ -415,6 +453,12 @@ public class PanelGame extends JComponent {
                     boomEffects.add(new Effect(bullet.getCenterX(), bullet.getCenterY(), 3, 5, 60, 0.5f, new Color(230, 207, 105)));
                     if (!rocket.updateHP(bullet.getSize())) {
                         score++;
+                        
+                        // Check if player earned ultimate charge (every 10 points)
+                        if (score % 10 == 0) {
+                            ultimateCharges++;
+                        }
+                        
                         rockets.remove(rocket);
                         sound.soundDestroy();
                         double x = rocket.getX() + Rocket.ROCKET_SIZE / 2;
@@ -477,9 +521,6 @@ public class PanelGame extends JComponent {
     }
 
     private void drawGame() {
-        String currentUser = gameSettings.getCurrentUser();
-        int bestScore = highscoreManager.getPlayerBestScore(currentUser);
-        
         if (player.isAlive()) {
             player.draw(g2);
         }
@@ -513,30 +554,83 @@ public class PanelGame extends JComponent {
             g2.fillRect(0, 0, width, height);
         }
         
+        // Ultimate mode visual effect - subtle semi-transparent overlay
+        if (ultimateActive && ultimateTimer > 0) {
+            // Create a subtle golden overlay with pulsing effect
+            float pulseIntensity = (float)(0.5 + 0.3 * Math.sin(ultimateTimer * 0.2));
+            int alpha = (int)(30 * pulseIntensity); // Very subtle transparency (max 30)
+            g2.setColor(new Color(255, 215, 0, alpha)); // Golden color with low alpha
+            g2.fillRect(0, 0, width, height);
+            
+            // Add subtle border effect
+            g2.setColor(new Color(255, 215, 0, 80));
+            g2.drawRect(5, 5, width - 10, height - 10);
+            g2.drawRect(10, 10, width - 20, height - 20);
+        }
+        
         g2.setColor(Color.WHITE);
         g2.setFont(getFont().deriveFont(Font.BOLD, 15f));
         g2.drawString("Score : " + score, 10, 20);
         
-        // Display current difficulty and user info
+        // Display current user and their best score
+        String currentUser = gameSettings.getCurrentUser();
+        int bestScore = highscoreManager.getPlayerBestScore(currentUser);
         g2.setFont(getFont().deriveFont(Font.PLAIN, 12f));
         g2.drawString("Player: " + currentUser, 10, 40);
         g2.drawString("Best: " + bestScore, 10, 55);
-        g2.drawString("Difficulty: " + gameSettings.getDifficulty(), 10, 70);
         
-        // Display player HP
-        g2.setColor(Color.RED);
-        g2.drawString("HP: " + (int)player.getHP() + "/" + currentDifficulty.getPlayerMaxHP(), 10, 85);
-        g2.setColor(Color.WHITE);
+        // Display ultimate charges and status
+        g2.setFont(getFont().deriveFont(Font.BOLD, 14f));
+        if (ultimateActive) {
+            g2.setColor(GOLD_COLOR);
+            float timeLeft = ultimateTimer / 60.0f; // Convert to seconds
+            g2.drawString("ULTIMATE MODE: " + String.format("%.1f", timeLeft) + "s", 10, 75);
+            g2.setFont(getFont().deriveFont(Font.PLAIN, 10f));
+            g2.drawString("J shoots ultimate bullets!", 10, 90);
+        } else if (ultimateCharges > 0) {
+            g2.setColor(Color.YELLOW);
+            g2.drawString("Ultimate: " + ultimateCharges, 10, 75);
+            g2.setFont(getFont().deriveFont(Font.PLAIN, 10f));
+            g2.drawString("Press K to activate (5s)", 10, 90);
+        } else {
+            g2.setColor(Color.GRAY);
+            g2.drawString("Ultimate: 0", 10, 75);
+            g2.setFont(getFont().deriveFont(Font.PLAIN, 10f));
+            g2.drawString("Get 10 points for charge", 10, 90);
+        }
         
+        // Show if current score is a new personal best
         if (score > bestScore && score > 0) {
             g2.setColor(Color.YELLOW);
             g2.setFont(getFont().deriveFont(Font.BOLD, 14f));
-            g2.drawString("NEW PERSONAL BEST!", 10, 105);
-            g2.setColor(Color.WHITE);
+            g2.drawString("NEW PERSONAL BEST!", 10, 110);
         }
         
+        g2.setColor(Color.WHITE);
         g2.setFont(getFont().deriveFont(Font.PLAIN, 12f));
         g2.drawString("Press 'P' to pause", width - 120, 20);
+        
+        // Display controls
+                // Display controls
+        g2.setFont(getFont().deriveFont(Font.PLAIN, 10f));
+        if (ultimateActive) {
+            g2.setColor(GOLD_COLOR);
+            g2.drawString("J: ULTIMATE SHOT!", width - 120, 40);
+            g2.drawString("K: ULTIMATE SHOT!", width - 120, 55);
+        } else {
+            g2.setColor(Color.WHITE);
+            g2.drawString("J: Normal Shot", width - 120, 40);
+            if (ultimateCharges > 0) {
+                g2.setColor(Color.YELLOW);
+                g2.drawString("K: Ultimate Shot (" + ultimateCharges + ")", width - 120, 55);
+            } else {
+                g2.setColor(Color.GRAY);
+                g2.drawString("K: Ultimate (0)", width - 120, 55);
+            }
+        }
+
+        
+        g2.setColor(Color.WHITE);
         
         if (paused) {
             g2.setColor(new Color(0, 0, 0, 180));
@@ -560,6 +654,19 @@ public class PanelGame extends JComponent {
             x = (width - textWidth) / 2;
             g2.drawString(difficultyText, (int) x, 190);
             
+            // Show ultimate status in pause menu
+            if (ultimateActive) {
+                g2.setColor(GOLD_COLOR);
+                float timeLeft = ultimateTimer / 60.0f;
+                String ultimateText = "Ultimate Mode Active: " + String.format("%.1f", timeLeft) + "s remaining";
+                fm = g2.getFontMetrics();
+                r2 = fm.getStringBounds(ultimateText, g2);
+                textWidth = r2.getWidth();
+                x = (width - textWidth) / 2;
+                g2.drawString(ultimateText, (int) x, 220);
+                g2.setColor(Color.WHITE);
+            }
+            
             g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
             String volumeLabel = "Volume: " + gameSettings.getVolume() + "%";
             fm = g2.getFontMetrics();
@@ -578,7 +685,7 @@ public class PanelGame extends JComponent {
             int fillWidth = (int)(sliderWidth * (gameSettings.getVolume() / 100.0));
             g2.fillRect(sliderX, sliderY, fillWidth, sliderHeight);
             g2.setColor(Color.WHITE);
-            g2.drawRect(sliderX, sliderY, sliderWidth, sliderHeight);
+                        g2.drawRect(sliderX, sliderY, sliderWidth, sliderHeight);
             
             g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
             String brightnessLabel = "Brightness: " + gameSettings.getBrightness() + "%";
@@ -618,81 +725,56 @@ public class PanelGame extends JComponent {
         }
         
         if (!player.isAlive()) {
-            g2.setColor(new Color(0, 0, 0, 200));
-            g2.fillRect(0, 0, width, height);
-            
-            int centerY = height / 2;
-            
-            g2.setColor(Color.RED);
-            g2.setFont(getFont().deriveFont(Font.BOLD, 50f));
-            String gameOverText = "GAME OVER";
-            FontMetrics fm = g2.getFontMetrics();
-            Rectangle2D r2 = fm.getStringBounds(gameOverText, g2);
-            double textWidth = r2.getWidth();
-                        double x = (width - textWidth) / 2;
-            g2.drawString(gameOverText, (int) x, centerY - 80);
-            
-            // Draw final score
-            g2.setColor(Color.WHITE);
-            g2.setFont(getFont().deriveFont(Font.BOLD, 24f));
+            String text = "GAME OVER";
+            String textKey = "Press key enter to Continue ...";
             String scoreText = "Final Score: " + score;
+            
+            g2.setFont(getFont().deriveFont(Font.BOLD, 50f));
+            FontMetrics fm = g2.getFontMetrics();
+            Rectangle2D r2 = fm.getStringBounds(text, g2);
+            double textWidth = r2.getWidth();
+            double textHeight = r2.getHeight();
+            double x = (width - textWidth) / 2;
+            double y = (height - textHeight) / 2;
+            g2.drawString(text, (int) x, (int) y + fm.getAscent());
+            
+            // Show final score
+            g2.setFont(getFont().deriveFont(Font.BOLD, 24f));
             fm = g2.getFontMetrics();
             r2 = fm.getStringBounds(scoreText, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(scoreText, (int) x, centerY - 20);
-            
-            // Show difficulty completed
-            g2.setColor(Color.CYAN);
-            g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
-            String difficultyText = "Difficulty: " + gameSettings.getDifficulty();
-            fm = g2.getFontMetrics();
-            r2 = fm.getStringBounds(difficultyText, g2);
-            textWidth = r2.getWidth();
-            x = (width - textWidth) / 2;
-            g2.drawString(difficultyText, (int) x, centerY + 5);
+            g2.drawString(scoreText, (int) x, (int) y + fm.getAscent() + 20);
             
             // Show if it's a new best score
             if (score > bestScore && score > 0) {
                 g2.setColor(Color.YELLOW);
-                g2.setFont(getFont().deriveFont(Font.BOLD, 20f));
                 String newBestText = "NEW PERSONAL BEST!";
                 fm = g2.getFontMetrics();
                 r2 = fm.getStringBounds(newBestText, g2);
                 textWidth = r2.getWidth();
                 x = (width - textWidth) / 2;
-                g2.drawString(newBestText, (int) x, centerY + 35);
+                g2.drawString(newBestText, (int) x, (int) y + fm.getAscent() + 50);
+                g2.setColor(Color.WHITE);
             }
             
-            // Draw continue instruction with emphasis on available keys
-            g2.setColor(Color.LIGHT_GRAY);
-            g2.setFont(getFont().deriveFont(Font.PLAIN, 16f));
-            String continueText = "Press ENTER to restart or ESC for main menu";
+            g2.setFont(getFont().deriveFont(Font.BOLD, 15f));
             fm = g2.getFontMetrics();
-            r2 = fm.getStringBounds(continueText, g2);
+            r2 = fm.getStringBounds(textKey, g2);
             textWidth = r2.getWidth();
+            textHeight = r2.getHeight();
             x = (width - textWidth) / 2;
-            g2.drawString(continueText, (int) x, centerY + 70);
+            y = (height - textHeight) / 2;
+            g2.drawString(textKey, (int) x, (int) y + fm.getAscent() + 100);
             
-            // Highlight the available keys
-            g2.setColor(Color.YELLOW);
-            g2.setFont(getFont().deriveFont(Font.BOLD, 14f));
-            String keyHint = "(Only ENTER and ESC keys are active)";
+            // Show ESC option
+            String escText = "Press ESC to return to main menu";
+            g2.setFont(getFont().deriveFont(Font.PLAIN, 12f));
             fm = g2.getFontMetrics();
-            r2 = fm.getStringBounds(keyHint, g2);
+            r2 = fm.getStringBounds(escText, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(keyHint, (int) x, centerY + 90);
-            
-            // Show player stats
-            g2.setColor(Color.CYAN);
-            g2.setFont(getFont().deriveFont(Font.PLAIN, 14f));
-            String playerText = "Player: " + currentUser + " | Best Score: " + bestScore;
-            fm = g2.getFontMetrics();
-            r2 = fm.getStringBounds(playerText, g2);
-            textWidth = r2.getWidth();
-            x = (width - textWidth) / 2;
-            g2.drawString(playerText, (int) x, centerY + 120);
+            g2.drawString(escText, (int) x, (int) y + fm.getAscent() + 130);
         }
     }
     

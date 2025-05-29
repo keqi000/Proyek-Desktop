@@ -12,10 +12,11 @@ public class Bullet {
     private double x;
     private double y;
     private final Shape shape;
-    private final Color color = new Color(255, 255, 255);
+    private Color color;
     private final float angle;
     private double size;
     private float speed = 1f;
+    private boolean isUltimate = false;
 
     public Bullet(double x, double y, float angle, double size, float speed) {
         x += Player.PLAYER_SIZE / 2 - (size / 2);
@@ -25,6 +26,15 @@ public class Bullet {
         this.angle = angle;
         this.size = size;
         this.speed = speed;
+        
+        // Determine if this is an ultimate bullet based on size
+        if (size >= 20) {
+            this.isUltimate = true;
+            this.color = new Color(255, 215, 0); // Gold color for ultimate bullets
+        } else {
+            this.color = new Color(255, 255, 255); // White color for normal bullets
+        }
+        
         shape = new Ellipse2D.Double(0, 0, size, size);
     }
 
@@ -46,6 +56,13 @@ public class Bullet {
         g2.setColor(color);
         g2.translate(x, y);
         g2.fill(shape);
+        
+        // Add glow effect for ultimate bullets
+        if (isUltimate) {
+            g2.setColor(new Color(255, 215, 0, 100)); // Semi-transparent gold
+            g2.fill(new Ellipse2D.Double(-2, -2, size + 4, size + 4));
+        }
+        
         g2.setTransform(oldTransform);
     }
 
@@ -72,5 +89,8 @@ public class Bullet {
     public double getCenterY() {
         return y + size / 2;
     }
-
+    
+    public boolean isUltimate() {
+        return isUltimate;
+    }
 }
