@@ -2,7 +2,9 @@ package game.main;
 
 import game.component.PanelGame;
 import game.settings.SettingsPanel;
+import game.settings.HighscorePanel;
 import game.util.GameSettings;
+import game.util.HighscoreManager;
 
 import java.awt.CardLayout;
 import java.awt.GraphicsDevice;
@@ -18,14 +20,17 @@ public class Main extends JFrame {
     private MainMenuPanel menuPanel;
     private PanelGame gamePanel;
     private SettingsPanel settingsPanel;
+    private HighscorePanel highscorePanel;
     private CardLayout cardLayout;
     private JPanel mainPanel;
     private GameSettings gameSettings;
+    private HighscoreManager highscoreManager;
     private boolean isFullScreen = false;
-    private boolean wasInGame = false; // Track if we were in game before settings
+    private boolean wasInGame = false;
     
     public Main() {
         gameSettings = GameSettings.getInstance();
+        highscoreManager = HighscoreManager.getInstance();
         init();
     }
     
@@ -44,11 +49,13 @@ public class Main extends JFrame {
         menuPanel = new MainMenuPanel(this);
         gamePanel = new PanelGame();
         settingsPanel = new SettingsPanel(this);
+        highscorePanel = new HighscorePanel(this);
         
         // Add panels to card layout
         mainPanel.add(menuPanel, "MENU");
         mainPanel.add(gamePanel, "GAME");
         mainPanel.add(settingsPanel, "SETTINGS");
+        mainPanel.add(highscorePanel, "HIGHSCORE");
         
         // Show menu first
         cardLayout.show(mainPanel, "MENU");
@@ -63,17 +70,14 @@ public class Main extends JFrame {
                 if (e.getKeyCode() == KeyEvent.VK_F11) {
                     toggleFullScreen();
                 } else if (e.getKeyCode() == KeyEvent.VK_M) {
-                    // M key is used as a special key to return to main menu from game
                     showMainMenu();
                 }
             }
         });
         
-        // Make sure the frame can receive key events
         setFocusable(true);
         requestFocus();
         
-        // Add window listener for game panel
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
@@ -82,41 +86,37 @@ public class Main extends JFrame {
             
             @Override
             public void windowClosing(WindowEvent e) {
-                // Save settings when closing
                 gameSettings.saveSettings();
             }
         });
     }
 
     public boolean isGameActive() {
-    return gamePanel != null && gamePanel.isShowing();
-}
-
-// Add method to apply settings to the game
-public void applyGameSettings() {
-    if (gamePanel != null) {
-        gamePanel.applySettings();
+        return gamePanel != null && gamePanel.isShowing();
     }
-}
+
+    public void applyGameSettings() {
+        if (gamePanel != null) {
+            gamePanel.applySettings();
+        }
+    }
     
     public void toggleFullScreen() {
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice gd = ge.getDefaultScreenDevice();
         
         if (!isFullScreen) {
-            // Switch to fullscreen
             if (gd.isFullScreenSupported()) {
-                dispose(); // Dispose the current frame
-                setUndecorated(true); // Remove window decorations
+                dispose();
+                setUndecorated(true);
                 setResizable(false);
                 gd.setFullScreenWindow(this);
                 isFullScreen = true;
             }
         } else {
-            // Switch back to windowed mode
             gd.setFullScreenWindow(null);
-            dispose(); // Dispose the current frame
-            setUndecorated(false); // Restore window decorations
+            dispose();
+            setUndecorated(false);
             setResizable(true);
             setSize(1366, 768);
             setLocationRelativeTo(null);
@@ -124,75 +124,82 @@ public void applyGameSettings() {
             isFullScreen = false;
         }
         
-        // Make sure the frame can receive key events after toggling
         setFocusable(true);
         requestFocus();
     }
     
     public void startGame() {
-    // Remove the old game panel if it exists
-    if (gamePanel != null) {
-        mainPanel.remove(gamePanel);
+        if (gamePanel != null) {
+            mainPanel.remove(gamePanel);
+        }
+        
+        gamePanel = new PanelGame();
+        mainPanel.add(gamePanel, "GAME");
+        
+        cardLayout.show(mainPanel, "GAME");
+        gamePanel.start();
+        
+        gamePanel.requestFocusInWindow();
     }
-    
-    // Create a new game panel
-    gamePanel = new PanelGame();
-    mainPanel.add(gamePanel, "GAME");
-    
-    // Show the game panel
-    cardLayout.show(mainPanel, "GAME");
-    gamePanel.start();
-    
-    // Make sure the game panel gets focus
-    gamePanel.requestFocusInWindow();
-}
 
-    
     public void resumeGame() {
         cardLayout.show(mainPanel, "GAME");
         gamePanel.resume();
     }
     
-    // Update the openSettings method
     public void openSettings() {
-        // Remember if we were in game
         wasInGame = gamePanel != null && gamePanel.isShowing();
-        
-        // Update settings panel UI with current settings
         settingsPanel.updateUIFromSettings();
-        
-        // Show the settings panel
         cardLayout.show(mainPanel, "SETTINGS");
     }
 
-    
-    // Fixed version
-    public void showMainMenu() {
-    // Completely stop the game
-    if (gamePanel != null) {
-        gamePanel.stopGame(); // We'll need to add this method to PanelGame
-    }
-    
-    // Show the menu panel
-    cardLayout.show(mainPanel, "MENU");
-    menuPanel.setVisible(true);
-    menuPanel.requestFocusInWindow();
-    
-    // Force a repaint
-    mainPanel.revalidate();
-    mainPanel.repaint();
+    public void openHighscore() {
+        wasInGame = gamePanel != null && gamePanel.isShowing();
+        highscorePanel.refreshContent();
+        cardLayout.show(mainPanel, "HIGHSCORE");
     }
 
+    public void showMainMenu() {
+        if (gamePanel != null) {
+            gamePanel.stopGame();
+        }
+        
+        cardLayout.show(mainPanel, "MENU");
+        menuPanel.setVisible(true);
+        menuPanel.requestFocusInWindow();
+        
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
 
     public void backFromSettings() {
-        // Return to the previous screen (game or menu)
         if (wasInGame) {
             resumeGame();
             wasInGame = false;
         } else {
-            // If we were in main menu before settings
             showMainMenu();
         }
+    }
+    
+    public void backFromHighscore() {
+        if (wasInGame) {
+            resumeGame();
+            wasInGame = false;
+        } else {
+            showMainMenu();
+        }
+    }
+    
+    public void refreshHighscore() {
+        // Reload highscore manager and refresh panel
+        highscoreManager = HighscoreManager.getInstance();
+        highscorePanel.refreshContent();
+    }
+    
+    // Method to save score when game ends
+    public void saveGameScore(int score) {
+        String currentUser = gameSettings.getCurrentUser();
+        highscoreManager.addScore(currentUser, score);
     }
     
     public static void main(String[] args) {
