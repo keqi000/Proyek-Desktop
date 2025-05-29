@@ -20,6 +20,8 @@ public class Player extends HpRender {
         p.lineTo(20, PLAYER_SIZE - 5);
         p.lineTo(0, PLAYER_SIZE - 15);
         playerShap = new Area(p);
+        this.maxHP = 50; // Default HP
+        resetHP();
     }
 
     public static final double PLAYER_SIZE = 64;
@@ -33,6 +35,7 @@ public class Player extends HpRender {
     private final Image image_speed;
     private boolean speedUp;
     private boolean alive = true;
+    private double maxHP = 50;
 
     public void changeLocation(double x, double y) {
         this.x = x;
@@ -118,5 +121,30 @@ public class Player extends HpRender {
         resetHP();
         angle = 0;
         speed = 0;
+    }
+    
+    // New methods for difficulty support
+    public void setMaxHP(int maxHP) {
+        this.maxHP = maxHP;
+        // Update the HP object
+        this.hp = new HP(maxHP, maxHP);
+        resetHP();
+    }
+    
+    public double getMaxHP() {
+        return maxHP;
+    }
+    
+    public double getHP() {
+        return hp.getCurrentHp();
+    }
+    
+    public boolean updateHP(double damage) {
+        // Use the parent class method instead of calling hp.updateHP directly
+        boolean stillAlive = super.updateHP(damage);
+        if (!stillAlive) {
+            alive = false;
+        }
+        return stillAlive;
     }
 }

@@ -26,6 +26,7 @@ public class SettingsPanel extends JPanel {
     private JButton deleteUserButton;
     private JButton backButton;
     private JButton saveButton;
+    private JTextArea difficultyDescriptionArea;
     
     // Current settings
     private GameSettings gameSettings;
@@ -82,7 +83,6 @@ public class SettingsPanel extends JPanel {
         volumeSlider.setMinorTickSpacing(5);
         volumeSlider.addChangeListener(e -> {
             gameSettings.setVolume(volumeSlider.getValue());
-            // If we're in the game, apply settings immediately
             if (mainFrame.isGameActive()) {
                 mainFrame.applyGameSettings();
             }
@@ -102,12 +102,11 @@ public class SettingsPanel extends JPanel {
         brightnessSlider.setMinorTickSpacing(5);
         brightnessPanel.add(brightnessSlider);
         brightnessSlider.addChangeListener(e -> {
-    gameSettings.setBrightness(brightnessSlider.getValue());
-    // If we're in the game, apply settings immediately
-    if (mainFrame.isGameActive()) {
-        mainFrame.applyGameSettings();
-    }
-});
+            gameSettings.setBrightness(brightnessSlider.getValue());
+            if (mainFrame.isGameActive()) {
+                mainFrame.applyGameSettings();
+            }
+        });
         container.add(brightnessPanel);
         container.add(Box.createRigidArea(new Dimension(0, 15)));
         
@@ -116,6 +115,7 @@ public class SettingsPanel extends JPanel {
         String[] difficulties = {"Easy", "Medium", "Hard"};
         difficultyComboBox = new JComboBox<>(difficulties);
         difficultyComboBox.setSelectedItem(gameSettings.getDifficulty());
+        difficultyComboBox.addActionListener(e -> updateDifficultyDescription());
         difficultyPanel.add(difficultyComboBox);
         container.add(difficultyPanel);
         container.add(Box.createRigidArea(new Dimension(0, 15)));
@@ -139,6 +139,11 @@ public class SettingsPanel extends JPanel {
         
         userPanel.add(userSelectionPanel);
         container.add(userPanel);
+        container.add(Box.createRigidArea(new Dimension(0, 20)));
+        
+        // Difficulty description panel
+        JPanel descriptionPanel = createDifficultyDescriptionPanel();
+        container.add(descriptionPanel);
         
         // Add action listeners
         createUserButton.addActionListener(new ActionListener() {
@@ -155,30 +160,85 @@ public class SettingsPanel extends JPanel {
             }
         });
         
+        // Initialize difficulty description
+        updateDifficultyDescription();
+        
         return container;
     }
-
-// Add this method to update the UI components with current settings values
-public void updateUIFromSettings() {
-    // Update sliders to reflect current settings
-    volumeSlider.setValue(gameSettings.getVolume());
-    brightnessSlider.setValue(gameSettings.getBrightness());
     
-    // Update other settings components
-    difficultyComboBox.setSelectedItem(gameSettings.getDifficulty());
-    userProfileComboBox.setSelectedItem(gameSettings.getCurrentUser());
-}
-
-// Override the setVisible method to update UI when panel becomes visible
-@Override
-public void setVisible(boolean visible) {
-    if (visible) {
-        // Update UI components with current settings before becoming visible
-        updateUIFromSettings();
+    private JPanel createDifficultyDescriptionPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(Color.WHITE, 2), 
+            "Difficulty Description", 
+            0, 0, 
+            new Font("Arial", Font.BOLD, 16), 
+            Color.WHITE));
+        
+        difficultyDescriptionArea = new JTextArea(6, 40);
+        difficultyDescriptionArea.setOpaque(false);
+        difficultyDescriptionArea.setForeground(Color.WHITE);
+        difficultyDescriptionArea.setFont(new Font("Arial", Font.PLAIN, 12));
+        difficultyDescriptionArea.setEditable(false);
+        difficultyDescriptionArea.setLineWrap(true);
+        difficultyDescriptionArea.setWrapStyleWord(true);
+        
+        panel.add(difficultyDescriptionArea);
+        
+        return panel;
     }
-    super.setVisible(visible);
-}
+    
+    private void updateDifficultyDescription() {
+        String selectedDifficulty = (String) difficultyComboBox.getSelectedItem();
+        String description = "";
+        
+        switch (selectedDifficulty) {
+            case "Easy":
+                description = "EASY MODE:\n" +
+                            "• Rockets spawn every 4 seconds\n" +
+                            "• Rockets move at normal speed\n" +
+                            "• Player has 100 HP\n" +
+                            "• Rockets have 20 HP\n" +
+                            "• Perfect for beginners and casual play";
+                break;
+            case "Medium":
+                description = "MEDIUM MODE:\n" +
+                            "• Rockets spawn every 3 seconds\n" +
+                            "• Rockets move 25% faster\n" +
+                            "• Player has 75 HP\n" +
+                            "• Rockets have 30 HP\n" +
+                            "• Balanced challenge for experienced players";
+                break;
+            case "Hard":
+                description = "HARD MODE:\n" +
+                            "• Rockets spawn every 2 seconds\n" +
+                            "• Rockets move 50% faster\n" +
+                            "• Player has 50 HP\n" +
+                            "• Rockets have 40 HP\n" +
+                            "• Extreme challenge for expert players only!";
+                break;
+        }
+        
+        difficultyDescriptionArea.setText(description);
+    }
 
+    public void updateUIFromSettings() {
+        volumeSlider.setValue(gameSettings.getVolume());
+        brightnessSlider.setValue(gameSettings.getBrightness());
+        difficultyComboBox.setSelectedItem(gameSettings.getDifficulty());
+        userProfileComboBox.setSelectedItem(gameSettings.getCurrentUser());
+        updateDifficultyDescription();
+    }
+
+    @Override
+    public void setVisible(boolean visible) {
+        if (visible) {
+            updateUIFromSettings();
+        }
+        super.setVisible(visible);
+    }
     
     private JPanel createSettingPanel(String title) {
         JPanel panel = new JPanel();
@@ -247,7 +307,6 @@ public void setVisible(boolean visible) {
             "Enter new user name:", "Create User", JOptionPane.PLAIN_MESSAGE);
         
         if (userName != null && !userName.trim().isEmpty()) {
-            // Check if user already exists
             for (UserProfile profile : userProfiles) {
                 if (profile.getUserName().equalsIgnoreCase(userName)) {
                     JOptionPane.showMessageDialog(this, 
@@ -256,12 +315,10 @@ public void setVisible(boolean visible) {
                 }
             }
             
-            // Create new user
             UserProfile newProfile = new UserProfile(userName);
             userProfiles.add(newProfile);
             newProfile.save();
             
-            // Update combo box
             userProfileComboBox.addItem(userName);
             userProfileComboBox.setSelectedItem(userName);
         }
@@ -281,7 +338,6 @@ public void setVisible(boolean visible) {
             "Confirm Delete", JOptionPane.YES_NO_OPTION);
         
         if (confirm == JOptionPane.YES_OPTION) {
-            // Remove from list
             UserProfile toRemove = null;
             for (UserProfile profile : userProfiles) {
                 if (profile.getUserName().equals(selectedUser)) {
@@ -291,10 +347,9 @@ public void setVisible(boolean visible) {
             }
             
             if (toRemove != null) {
-                                userProfiles.remove(toRemove);
+                userProfiles.remove(toRemove);
                 toRemove.delete();
                 
-                // Update combo box
                 userProfileComboBox.removeItem(selectedUser);
                 userProfileComboBox.setSelectedItem("Default");
             }
@@ -312,10 +367,8 @@ public void setVisible(boolean visible) {
     private List<UserProfile> loadUserProfiles() {
         List<UserProfile> profiles = new ArrayList<>();
         
-        // Add default profile
         profiles.add(new UserProfile("Default"));
         
-        // Load saved profiles
         File userDir = new File("users");
         if (userDir.exists() && userDir.isDirectory()) {
             File[] userFiles = userDir.listFiles();
@@ -338,7 +391,7 @@ public void setVisible(boolean visible) {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         if (backgroundImage != null) {
-            g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+                        g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
             
             // Apply semi-transparent overlay for better readability
             g.setColor(new Color(0, 0, 0, 150));

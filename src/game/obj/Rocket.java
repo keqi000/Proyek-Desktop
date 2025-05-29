@@ -22,6 +22,8 @@ public class Rocket extends HpRender {
         p.lineTo(ROCKET_SIZE - 5, ROCKET_SIZE - 13);
         p.lineTo(15, ROCKET_SIZE - 10);
         rocketShap = new Area(p);
+        this.maxHP = 20; // Default HP
+        this.speedMultiplier = 1.0f; // Default speed
     }
 
     public static final double ROCKET_SIZE = 50;
@@ -31,6 +33,8 @@ public class Rocket extends HpRender {
     private float angle = 0;
     private final Image image;
     private final Area rocketShap;
+    private double maxHP = 20;
+    private float speedMultiplier = 1.0f;
 
     public void changeLocation(double x, double y) {
         this.x = x;
@@ -38,8 +42,8 @@ public class Rocket extends HpRender {
     }
 
     public void update() {
-        x += Math.cos(Math.toRadians(angle)) * speed;
-        y += Math.sin(Math.toRadians(angle)) * speed;
+        x += Math.cos(Math.toRadians(angle)) * speed * speedMultiplier;
+        y += Math.sin(Math.toRadians(angle)) * speed * speedMultiplier;
     }
 
     public void changeAngle(float angle) {
@@ -94,5 +98,28 @@ public class Rocket extends HpRender {
             return true;
         }
     }
-
+    
+    // New methods for difficulty support
+    public void setSpeedMultiplier(float multiplier) {
+        this.speedMultiplier = multiplier;
+    }
+    
+    public void setMaxHP(int maxHP) {
+        this.maxHP = maxHP;
+        // Update the HP object
+        this.hp = new HP(maxHP, maxHP);
+    }
+    
+    public double getMaxHP() {
+        return maxHP;
+    }
+    
+    public double getHP() {
+        return hp.getCurrentHp();
+    }
+    
+    public boolean updateHP(double damage) {
+        // Use the parent class method instead of calling hp.updateHP directly
+        return super.updateHP(damage);
+    }
 }
