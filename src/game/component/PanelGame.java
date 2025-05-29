@@ -79,16 +79,16 @@ public class PanelGame extends JComponent {
                     int y = e.getY();
                     
                     // Check if resume button is clicked
-                    if (isButtonClicked(x, y, width / 2, 420)) {
+                    if (isButtonClicked(x, y, width / 2, 400)) { // Updated coordinates
                         togglePause();
                     }
                     // Check if restart button is clicked
-                    else if (isButtonClicked(x, y, width / 2, 470)) {
+                    else if (isButtonClicked(x, y, width / 2, 450)) { // Updated coordinates
                         resetGame();
                         togglePause();
                     }
                     // Check if main menu button is clicked
-                    else if (isButtonClicked(x, y, width / 2, 520)) {
+                    else if (isButtonClicked(x, y, width / 2, 500)) { // Updated coordinates
                         submitScore();
                         start = false;
                         paused = true;
@@ -103,7 +103,7 @@ public class PanelGame extends JComponent {
                     }
                   
                     // Check if volume slider is clicked
-                    if (y >= 260 && y <= 280) {
+                    if (y >= 270 && y <= 290) { // Updated to match the drawing coordinates
                         int sliderX = (width - 300) / 2;
                         if (x >= sliderX && x <= sliderX + 300) {
                             int newVolume = (int)(((x - sliderX) / 300.0) * 100);
@@ -114,7 +114,7 @@ public class PanelGame extends JComponent {
                     }
                     
                     // Check if brightness slider is clicked
-                    if (y >= 350 && y <= 370) {
+                    if (y >= 330 && y <= 350) { // Updated to match the drawing coordinates
                         int sliderX = (width - 300) / 2;
                         if (x >= sliderX && x <= sliderX + 300) {
                             int newBrightness = (int)(((x - sliderX) / 300.0) * 100);
@@ -195,6 +195,10 @@ public class PanelGame extends JComponent {
         player = new Player();
         player.changeLocation(150, 150);
         player.setMaxHP(currentDifficulty.getPlayerMaxHP());
+        
+        // Set screen boundaries for player
+        player.setScreenBounds(width, height);
+        
         rockets = new ArrayList<>();
         boomEffects = new ArrayList<>();
         
@@ -225,13 +229,30 @@ public class PanelGame extends JComponent {
         player.setMaxHP(currentDifficulty.getPlayerMaxHP());
         scoreSubmitted = false;
         
+        // Reset all key states
+        resetKeyStates();
+        
         // Update difficulty settings in case they changed
         currentDifficulty = DifficultySettings.getDifficultyConfig(gameSettings.getDifficulty());
+    }
+    
+    // Add this new method to reset all key states
+    private void resetKeyStates() {
+        if (key != null) {
+            key.setKey_left(false);
+            key.setKey_right(false);
+            key.setKey_space(false);
+            key.setKey_j(false);
+            key.setKey_k(false);
+            key.setKey_enter(false);
+        }
+        shotTime = 0; // Also reset shot time
     }
 
     public void stopGame() {
         submitScore();
         paused = true;
+        resetKeyStates();
         repaint();
     }
     
@@ -250,6 +271,7 @@ public class PanelGame extends JComponent {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (!player.isAlive()) {
+                    resetKeyStates();
                     if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                         key.setKey_enter(true);
                     } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
@@ -505,6 +527,9 @@ public class PanelGame extends JComponent {
                     boomEffects.add(new Effect(x, y, 10, 5, 100, 0.5f, new Color(255, 70, 70)));
                     boomEffects.add(new Effect(x, y, 10, 5, 150, 0.2f, new Color(255, 255, 255)));
                     
+                    // Reset key states when player dies
+                    resetKeyStates();
+                    
                     submitScore();
                 }
             }
@@ -667,6 +692,7 @@ public class PanelGame extends JComponent {
                 g2.setColor(Color.WHITE);
             }
             
+            // Volume section
             g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
             String volumeLabel = "Volume: " + gameSettings.getVolume() + "%";
             fm = g2.getFontMetrics();
@@ -675,38 +701,41 @@ public class PanelGame extends JComponent {
             x = (width - textWidth) / 2;
             g2.drawString(volumeLabel, (int) x, 260);
             
+            // Volume slider
             int sliderWidth = 300;
             int sliderHeight = 20;
             int sliderX = (width - sliderWidth) / 2;
-            int sliderY = 280;
+            int volumeSliderY = 270; // Changed from 280 to 270
             g2.setColor(Color.DARK_GRAY);
-            g2.fillRect(sliderX, sliderY, sliderWidth, sliderHeight);
+            g2.fillRect(sliderX, volumeSliderY, sliderWidth, sliderHeight);
             g2.setColor(Color.GREEN);
             int fillWidth = (int)(sliderWidth * (gameSettings.getVolume() / 100.0));
-            g2.fillRect(sliderX, sliderY, fillWidth, sliderHeight);
+            g2.fillRect(sliderX, volumeSliderY, fillWidth, sliderHeight);
             g2.setColor(Color.WHITE);
-                        g2.drawRect(sliderX, sliderY, sliderWidth, sliderHeight);
+            g2.drawRect(sliderX, volumeSliderY, sliderWidth, sliderHeight);
             
+            // Brightness section
             g2.setFont(getFont().deriveFont(Font.BOLD, 18f));
             String brightnessLabel = "Brightness: " + gameSettings.getBrightness() + "%";
             fm = g2.getFontMetrics();
             r2 = fm.getStringBounds(brightnessLabel, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(brightnessLabel, (int) x, 330);
+            g2.drawString(brightnessLabel, (int) x, 320); // Changed from 330 to 320
             
-            sliderY = 350;
+            // Brightness slider
+            int brightnessSliderY = 330; // Changed from 350 to 330
             g2.setColor(Color.DARK_GRAY);
-            g2.fillRect(sliderX, sliderY, sliderWidth, sliderHeight);
+            g2.fillRect(sliderX, brightnessSliderY, sliderWidth, sliderHeight);
             g2.setColor(Color.YELLOW);
             fillWidth = (int)(sliderWidth * (gameSettings.getBrightness() / 100.0));
-            g2.fillRect(sliderX, sliderY, fillWidth, sliderHeight);
+            g2.fillRect(sliderX, brightnessSliderY, fillWidth, sliderHeight);
             g2.setColor(Color.WHITE);
-            g2.drawRect(sliderX, sliderY, sliderWidth, sliderHeight);
+            g2.drawRect(sliderX, brightnessSliderY, sliderWidth, sliderHeight);
             
-            drawButton(g2, "Resume Game", width / 2, 420);
-            drawButton(g2, "Restart Game", width / 2, 470);
-            drawButton(g2, "Main Menu", width / 2, 520);
+            drawButton(g2, "Resume Game", width / 2, 400); // Adjusted button positions
+            drawButton(g2, "Restart Game", width / 2, 450);
+            drawButton(g2, "Main Menu", width / 2, 500);
             
             g2.setFont(getFont().deriveFont(Font.PLAIN, 14f));
             String instructions = "Click on buttons or sliders to interact";
@@ -714,14 +743,14 @@ public class PanelGame extends JComponent {
             r2 = fm.getStringBounds(instructions, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(instructions, (int) x, 580);
+            g2.drawString(instructions, (int) x, 560); // Adjusted instruction positions
             
             String instructions2 = "Press ESC to return to main menu";
             fm = g2.getFontMetrics();
             r2 = fm.getStringBounds(instructions2, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(instructions2, (int) x, 600);
+            g2.drawString(instructions2, (int) x, 580);
         }
         
         if (!player.isAlive()) {
@@ -729,43 +758,46 @@ public class PanelGame extends JComponent {
             String textKey = "Press key enter to Continue ...";
             String scoreText = "Final Score: " + score;
             
+            // Draw GAME OVER text
             g2.setFont(getFont().deriveFont(Font.BOLD, 50f));
             FontMetrics fm = g2.getFontMetrics();
             Rectangle2D r2 = fm.getStringBounds(text, g2);
             double textWidth = r2.getWidth();
-            double textHeight = r2.getHeight();
             double x = (width - textWidth) / 2;
-            double y = (height - textHeight) / 2;
-            g2.drawString(text, (int) x, (int) y + fm.getAscent());
+            double y = (height / 2) - 100; // Position higher up
+            g2.drawString(text, (int) x, (int) y);
             
-            // Show final score
+            // Show final score with proper spacing
             g2.setFont(getFont().deriveFont(Font.BOLD, 24f));
             fm = g2.getFontMetrics();
             r2 = fm.getStringBounds(scoreText, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(scoreText, (int) x, (int) y + fm.getAscent() + 20);
+            y += 80; // Add spacing from GAME OVER text
+            g2.drawString(scoreText, (int) x, (int) y);
             
             // Show if it's a new best score
             if (score > bestScore && score > 0) {
                 g2.setColor(Color.YELLOW);
                 String newBestText = "NEW PERSONAL BEST!";
+                g2.setFont(getFont().deriveFont(Font.BOLD, 20f));
                 fm = g2.getFontMetrics();
                 r2 = fm.getStringBounds(newBestText, g2);
                 textWidth = r2.getWidth();
                 x = (width - textWidth) / 2;
-                g2.drawString(newBestText, (int) x, (int) y + fm.getAscent() + 50);
+                y += 40; // Add spacing from score text
+                g2.drawString(newBestText, (int) x, (int) y);
                 g2.setColor(Color.WHITE);
             }
             
+            // Show continue instruction
             g2.setFont(getFont().deriveFont(Font.BOLD, 15f));
             fm = g2.getFontMetrics();
             r2 = fm.getStringBounds(textKey, g2);
             textWidth = r2.getWidth();
-            textHeight = r2.getHeight();
             x = (width - textWidth) / 2;
-            y = (height - textHeight) / 2;
-            g2.drawString(textKey, (int) x, (int) y + fm.getAscent() + 100);
+            y += 60; // Add spacing from previous text
+            g2.drawString(textKey, (int) x, (int) y);
             
             // Show ESC option
             String escText = "Press ESC to return to main menu";
@@ -774,7 +806,8 @@ public class PanelGame extends JComponent {
             r2 = fm.getStringBounds(escText, g2);
             textWidth = r2.getWidth();
             x = (width - textWidth) / 2;
-            g2.drawString(escText, (int) x, (int) y + fm.getAscent() + 130);
+            y += 30; // Add spacing from continue text
+            g2.drawString(escText, (int) x, (int) y);
         }
     }
     
@@ -820,6 +853,7 @@ public class PanelGame extends JComponent {
         paused = !paused;
         
         if (!paused) {
+            resetKeyStates();
             requestFocusInWindow();
         }
     }
@@ -834,6 +868,8 @@ public class PanelGame extends JComponent {
     
     public void resume() {
         paused = false;
+        // Reset key states when resuming to prevent stuck keys
+        resetKeyStates();
         requestFocusInWindow();
     }
     
@@ -842,6 +878,11 @@ public class PanelGame extends JComponent {
         super.setBounds(x, y, width, height);
         this.width = width;
         this.height = height;
+        
+        // Update player screen bounds when window size changes
+        if (player != null) {
+            player.setScreenBounds(width, height);
+        }
     }
     
     private boolean isButtonClicked(int mouseX, int mouseY, int buttonCenterX, int buttonY) {

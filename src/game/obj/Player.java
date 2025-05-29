@@ -36,6 +36,10 @@ public class Player extends HpRender {
     private boolean speedUp;
     private boolean alive = true;
     private double maxHP = 50;
+    
+    // Screen boundaries
+    private int screenWidth = 1366;
+    private int screenHeight = 768;
 
     public void changeLocation(double x, double y) {
         this.x = x;
@@ -43,8 +47,23 @@ public class Player extends HpRender {
     }
 
     public void update() {
-        x += Math.cos(Math.toRadians(angle)) * speed;
-        y += Math.sin(Math.toRadians(angle)) * speed;
+        // Calculate new position
+        double newX = x + Math.cos(Math.toRadians(angle)) * speed;
+        double newY = y + Math.sin(Math.toRadians(angle)) * speed;
+        
+        // Check boundaries and constrain position
+        if (newX >= 0 && newX <= screenWidth - PLAYER_SIZE) {
+            x = newX;
+        }
+        if (newY >= 0 && newY <= screenHeight - PLAYER_SIZE) {
+            y = newY;
+        }
+    }
+    
+    // Method to set screen boundaries
+    public void setScreenBounds(int width, int height) {
+        this.screenWidth = width;
+        this.screenHeight = height;
     }
 
     public void changeAngle(float angle) {
